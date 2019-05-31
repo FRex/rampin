@@ -6,6 +6,8 @@ Takes a single filename as argument, opens the file as read only and memory
 maps it whole, then accesses each 4 KiB page of it to bring the file into memory
 and then sleeps for 10 seconds and accesses them again to keep them in memory.
 
+**It never quits so you'll have to somehow kill it once you are done.**
+
 This program only makes sense if you have RAM to spare and/or are on 64-bit. I
 wrote it to speed up level loading in an old game that has a total of 5 GiB of
 assets and a 32-bit exe, so the game, OS and all the assets fit into my PC's RAM.
