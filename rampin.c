@@ -27,18 +27,23 @@ static void * memorymapfile(const wchar_t * fname, s64 * fsize)
     return ptr;
 }
 
-static void touchbytes(void * ptr, s64 size)
+static void touchbytes(void * ptr, s64 size, const wchar_t * fname)
 {
     unsigned char * p = ptr;
     s64 i;
     unsigned ret = 0u;
+    int firstrun = 1;
 
     while(1)
     {
         for(i = 0; i < size; i += 0x0100)
             ret += p[i];
 
+        if(firstrun)
+            wprintf(L"%ls: touched all %lld pages once, sleeping 9999ms and looping...\n", fname, i / 0x0100);
+
         Sleep(9999);
+        firstrun = 0;
     }
 }
 
@@ -55,7 +60,14 @@ int wmain(int argc, wchar_t ** argv)
 
     ptr = memorymapfile(argv[1], &s);
     if(ptr)
-        touchbytes(ptr, s);
+    {
+        wprintf(L"%ls: mapped %lld bytes (%lld MiB) at 0x%p, touching all pages...\n", argv[1], s, s / (1024 * 1024), ptr);
+        touchbytes(ptr, s, argv[1]);
+    }
+    else
+    {
+        wprintf(L"%ls: failed to map, quitting!\n", argv[1]);
+    }
 
     return 0;
 }
