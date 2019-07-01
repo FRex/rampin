@@ -27,22 +27,38 @@ static void * memorymapfile(const wchar_t * fname, s64 * fsize)
     return ptr;
 }
 
+static double mytime(void)
+{
+    LARGE_INTEGER freq, ret;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&ret);
+    return ((double)ret.QuadPart) / ((double)freq.QuadPart);
+}
+
 static void touchbytes(void * ptr, s64 size, const wchar_t * fname)
 {
     unsigned char * p = ptr;
     s64 i;
+    double starttime;
     unsigned ret = 0u;
     int firstrun = 1;
 
+    starttime = mytime();
     while(1)
     {
-        for(i = 0; i < size; i += 0x0100)
+        for(i = 0; i < size; i += 0x1000)
             ret += p[i];
 
         if(firstrun)
-            wprintf(L"%ls: touched all %lld pages once, sleeping 9999ms and looping...\n", fname, i / 0x0100);
+        {
+            const double elapsedtime = mytime() - starttime;
+            wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
+                fname, size, size / (1024.0 * 1024.0), ptr,
+                elapsedtime, size / (elapsedtime * 1024.0 * 1024.0)
+            );
+        } /* if firstrun */
 
-        Sleep(9999);
+        Sleep(30 * 1000);
         firstrun = 0;
     }
 }
@@ -61,7 +77,8 @@ int wmain(int argc, wchar_t ** argv)
     ptr = memorymapfile(argv[1], &s);
     if(ptr)
     {
-        wprintf(L"%ls: mapped %lld bytes (%lld MiB) at 0x%p, touching all pages...\n", argv[1], s, s / (1024 * 1024), ptr);
+        wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
+            argv[1], s, s / (1024.0 * 1024.0), ptr);
         touchbytes(ptr, s, argv[1]);
     }
     else

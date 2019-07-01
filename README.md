@@ -4,7 +4,7 @@ A small C program to try keep a single file in Windows RAM cache.
 
 Takes a single filename as argument, opens the file as read only and memory
 maps it whole, then accesses each 4 KiB page of it to bring the file into memory
-and then sleeps for 10 seconds and accesses them again to keep them in memory.
+and then sleeps for 30 seconds and accesses them again to keep them in memory.
 
 **It never quits so you'll have to somehow kill it once you are done.**
 
