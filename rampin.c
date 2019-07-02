@@ -5,6 +5,19 @@
 
 typedef long long int s64;
 
+static const wchar_t * filepath_to_filename(const wchar_t * path)
+{
+    size_t i, len, lastslash;
+
+    len = wcslen(path);
+    lastslash = 0;
+    for(i = 0; i < len; ++i)
+        if(path[i] == L'/' || path[i] == L'\\')
+            lastslash = i + 1;
+
+    return path + lastslash;
+}
+
 static void * memorymapfile(const wchar_t * fname, s64 * fsize)
 {
     HANDLE f, m;
@@ -70,7 +83,9 @@ int wmain(int argc, wchar_t ** argv)
 
     if(argc != 2)
     {
-        wprintf(L"Usage: %ls file\n", argv[0]);
+        const wchar_t * fname = filepath_to_filename(argv[0]);
+        fwprintf(stderr, L"%ls - memory map a file and touch all pages periodically\n", fname);
+        fwprintf(stderr, L"Usage: %ls file\n", fname);
         return 1;
     }
 
