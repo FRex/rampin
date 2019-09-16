@@ -48,21 +48,41 @@ static double mytime(void)
     return ((double)ret.QuadPart) / ((double)freq.QuadPart);
 }
 
-static void touchbytesonce(void * ptr, s64 size)
+struct MappedFile
 {
-    unsigned char * p = ptr;
+    unsigned char * ptr;
+    s64 size;
+};
+
+static void touchbytesonce(const struct MappedFile * file)
+{
     unsigned ret = 0u;
     s64 i;
 
-    for(i = 0; i < size; i += 0x1000)
-        ret += p[i];
+    for(i = 0; i < file->size; i += 0x1000)
+        ret += file->ptr[i];
+}
+
+static void touchfirsttime(const struct MappedFile * file, const wchar_t * fname)
+{
+    double starttime, elapsedtime;
+
+    wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
+        fname, file->size, file->size / (1024.0 * 1024.0), file->ptr);
+
+    starttime = mytime();
+    touchbytesonce(file);
+    elapsedtime = mytime() - starttime;
+
+    wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
+        fname, file->size, file->size / (1024.0 * 1024.0), file->ptr,
+        elapsedtime, file->size / (elapsedtime * 1024.0 * 1024.0)
+    );
 }
 
 int wmain(int argc, wchar_t ** argv)
 {
-    s64 s = 0;
-    void * ptr = 0x0;
-    double starttime, elapsedtime;
+    struct MappedFile file;
 
     if(argc != 2)
     {
@@ -72,24 +92,14 @@ int wmain(int argc, wchar_t ** argv)
         return 1;
     }
 
-    ptr = memorymapfile(argv[1], &s);
-    if(ptr)
+    file.ptr = (unsigned char*)memorymapfile(argv[1], &file.size);
+    if(file.ptr)
     {
-        wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
-            argv[1], s, s / (1024.0 * 1024.0), ptr);
-
-        starttime = mytime();
-        touchbytesonce(ptr, s);
-        elapsedtime = mytime() - starttime;
-        wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
-            argv[1], s, s / (1024.0 * 1024.0), ptr,
-            elapsedtime, s / (elapsedtime * 1024.0 * 1024.0)
-        );
-
+        touchfirsttime(&file, argv[1]);
         while(1)
         {
             Sleep(30 * 1000);
-            touchbytesonce(ptr, s);
+            touchbytesonce(&file);
         }
     }
     else
