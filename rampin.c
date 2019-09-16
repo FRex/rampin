@@ -82,9 +82,11 @@ static void touchfirsttime(const struct MappedFile * file, const wchar_t * fname
 
 int wmain(int argc, wchar_t ** argv)
 {
-    struct MappedFile file;
+    struct MappedFile * files;
+    int i;
+    int goodcount;
 
-    if(argc != 2)
+    if(argc < 2)
     {
         const wchar_t * fname = filepath_to_filename(argv[0]);
         fwprintf(stderr, L"%ls - memory map a file and touch all pages periodically\n", fname);
@@ -92,20 +94,42 @@ int wmain(int argc, wchar_t ** argv)
         return 1;
     }
 
-    file.ptr = (unsigned char*)memorymapfile(argv[1], &file.size);
-    if(file.ptr)
+    files = (struct MappedFile*)calloc(argc, sizeof(struct MappedFile));
+    if(!files)
     {
-        touchfirsttime(&file, argv[1]);
-        while(1)
-        {
-            Sleep(30 * 1000);
-            touchbytesonce(&file);
-        }
-    }
-    else
-    {
-        wprintf(L"%ls: failed to map, quitting!\n", argv[1]);
+        fwprintf(stderr, L"calloc(%d, %d) failed\n", argc, (int)sizeof(struct MappedFile));
+        return 2;
     }
 
+    goodcount = 0;
+    for(i = 1; i < argc; ++i)
+    {
+        files[i].ptr = (unsigned char*)memorymapfile(argv[i], &files[i].size);
+        if(!files[i].ptr)
+            fwprintf(stderr, L"%ls: failed to map!\n", argv[i]);
+        else
+            ++goodcount;
+    }
+
+    if(goodcount == 0)
+    {
+        fwprintf(stderr, L"failed to map any of the given %d files, quitting!\n", argc - 1);
+        free(files);
+        return 3;
+    }
+
+    for(i = 1; i < argc; ++i)
+        if(files[i].ptr)
+            touchfirsttime(&files[i], argv[i]);
+
+    while(1)
+    {
+        Sleep(30 * 1000);
+        for(i = 1; i < argc; ++i)
+            if(files[i].ptr)
+                touchbytesonce(&files[i]);
+    }
+
+    free(files);
     return 0;
 }

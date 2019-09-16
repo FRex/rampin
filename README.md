@@ -1,9 +1,9 @@
 # rampin
 
-A small C program to try keep a single file in Windows RAM cache.
+A small C program to try keep a file or few in Windows RAM cache.
 
-Takes a single filename as argument, opens the file as read only and memory
-maps it whole, then accesses each 4 KiB page of it to bring the file into memory
+Takes one or more filenames as arguments, opens them as read only and memory
+maps them whole, then accesses each 4 KiB page of it to bring them into memory
 and then sleeps for 30 seconds and accesses them again to keep them in memory.
 
 **It never quits so you'll have to somehow kill it once you are done.**
@@ -14,10 +14,14 @@ assets and a 32-bit exe, so the game, OS and all the assets fit into my PC's RAM
 
 **This program might easily backfire if used too greedily and your OS might start paging to disk!**
 
-Since it takes only a single argument the best way to use it is to use
-another command/tool to invoke many copies of it, e.g.:
+To make it easier to rampin entire dir tree I use this help script named `rampintree`:
 ```
-$ find /d/GOG\ Games/SomeGameName/ -type f | xargs -P 100000 -I @ rampin @
+#!/bin/bash
+
+if [ "$#" -eq 1 ]
+then
+    find "$1" -type f | xargs -P 99000 -I @ rampin @
+fi
 ```
 
 Go to releases to download a Windows exe compiled with Pelles C with no `-O2`
