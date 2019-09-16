@@ -48,38 +48,21 @@ static double mytime(void)
     return ((double)ret.QuadPart) / ((double)freq.QuadPart);
 }
 
-static void touchbytes(void * ptr, s64 size, const wchar_t * fname)
+static void touchbytesonce(void * ptr, s64 size)
 {
     unsigned char * p = ptr;
-    s64 i;
-    double starttime;
     unsigned ret = 0u;
-    int firstrun = 1;
+    s64 i;
 
-    starttime = mytime();
-    while(1)
-    {
-        for(i = 0; i < size; i += 0x1000)
-            ret += p[i];
-
-        if(firstrun)
-        {
-            const double elapsedtime = mytime() - starttime;
-            wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
-                fname, size, size / (1024.0 * 1024.0), ptr,
-                elapsedtime, size / (elapsedtime * 1024.0 * 1024.0)
-            );
-        } /* if firstrun */
-
-        Sleep(30 * 1000);
-        firstrun = 0;
-    }
+    for(i = 0; i < size; i += 0x1000)
+        ret += p[i];
 }
 
 int wmain(int argc, wchar_t ** argv)
 {
     s64 s = 0;
     void * ptr = 0x0;
+    double starttime, elapsedtime;
 
     if(argc != 2)
     {
@@ -94,7 +77,20 @@ int wmain(int argc, wchar_t ** argv)
     {
         wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
             argv[1], s, s / (1024.0 * 1024.0), ptr);
-        touchbytes(ptr, s, argv[1]);
+
+        starttime = mytime();
+        touchbytesonce(ptr, s);
+        elapsedtime = mytime() - starttime;
+        wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
+            argv[1], s, s / (1024.0 * 1024.0), ptr,
+            elapsedtime, s / (elapsedtime * 1024.0 * 1024.0)
+        );
+
+        while(1)
+        {
+            Sleep(30 * 1000);
+            touchbytesonce(ptr, s);
+        }
     }
     else
     {
