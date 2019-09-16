@@ -90,7 +90,7 @@ int wmain(int argc, wchar_t ** argv)
     {
         const wchar_t * fname = filepath_to_filename(argv[0]);
         fwprintf(stderr, L"%ls - memory map a file and touch all pages periodically\n", fname);
-        fwprintf(stderr, L"Usage: %ls file\n", fname);
+        fwprintf(stderr, L"Usage: %ls file...\n", fname);
         return 1;
     }
 
