@@ -80,6 +80,13 @@ static void touchfirsttime(const struct MappedFile * file, const wchar_t * fname
     );
 }
 
+static void print_usage(const wchar_t * argv0, FILE * f)
+{
+    const wchar_t * fname = filepath_to_filename(argv0);
+    fwprintf(f, L"%ls - memory map a file and touch all pages periodically\n", fname);
+    fwprintf(f, L"Usage: %ls file...\n", fname);
+}
+
 int wmain(int argc, wchar_t ** argv)
 {
     struct MappedFile * files;
@@ -88,9 +95,7 @@ int wmain(int argc, wchar_t ** argv)
 
     if(argc < 2)
     {
-        const wchar_t * fname = filepath_to_filename(argv[0]);
-        fwprintf(stderr, L"%ls - memory map a file and touch all pages periodically\n", fname);
-        fwprintf(stderr, L"Usage: %ls file...\n", fname);
+        print_usage(argv[0], stderr);
         return 1;
     }
 
