@@ -154,17 +154,23 @@ static void print_usage(const wchar_t * argv0, FILE * f)
 static void doBitSet(unsigned * flags, int bit)
 {
     assert(flags);
-    *flags |= 1 << bit;
+    *flags |= 1u << bit;
+}
+
+static void doBitClr(unsigned * flags, int bit)
+{
+    assert(flags);
+    *flags &= ~(1u << bit);
 }
 
 static int isBitSet(unsigned flags, int bit)
 {
-    return !!(flags & (1 << bit));
+    return !!(flags & (1u << bit));
 }
 
 static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * flags, int * loops)
 {
-    int i;
+    int i, j;
 
     assert(flags);
     assert(firstfile);
@@ -198,43 +204,49 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
 
         if(argv[i][0] == L'-')
         {
-            switch(argv[i][1])
+            for(j = 1; argv[i][j]; ++j)
             {
-                case L'0': case L'1': case L'2': case L'3': case L'4':
-                case L'5': case L'6': case L'7': case L'8': case L'9':
-                    *loops = argv[i][1] - L'0';
-                    break;
-                case L'h':
-                    fwprintf(stderr, L"wrong use of -h (arg #%d), use '%ls -h' to print help to stdout\n", i, argv[0]);
-                    return 0;
-                case L't':
-                    doBitSet(flags, BITOPT_TOTAL);
-                    break;
-                case L'q':
-                    doBitSet(flags, BITOPT_QUIET);
-                    break;
-                case L'T':
-                    doBitSet(flags, BITOPT_TOTAL);
-                    doBitSet(flags, BITOPT_QUIET);
-                    break;
-                case L's':
-                    doBitSet(flags, BITOPT_SORT_ASC);
-                    break;
-                case L'S':
-                    doBitSet(flags, BITOPT_SORT_DESC);
-                    break;
-                case L'p':
-                    doBitSet(flags, BITOPT_PEDANTIC);
-                    break;
-                default:
-                    fwprintf(
-                        stderr,
-                        L"unknown option %ls (arg #%d), for filenames starting with - use -- to end options first\n",
-                        argv[i],
-                        i
-                    );
-                    return 0;
-            } /* switch argv i 1 */
+                const wchar_t c = argv[i][j];
+                switch(c)
+                {
+                    case L'0': case L'1': case L'2': case L'3': case L'4':
+                    case L'5': case L'6': case L'7': case L'8': case L'9':
+                        *loops = c - L'0';
+                        break;
+                    case L'h':
+                        fwprintf(stderr, L"wrong use of h in %ls (arg #%d), use '%ls -h' to print help to stdout\n",
+                            argv[i], i, argv[0]);
+                        return 0;
+                    case L't':
+                        doBitSet(flags, BITOPT_TOTAL);
+                        break;
+                    case L'q':
+                        doBitSet(flags, BITOPT_QUIET);
+                        break;
+                    case L'T':
+                        doBitSet(flags, BITOPT_TOTAL);
+                        doBitSet(flags, BITOPT_QUIET);
+                        break;
+                    case L's':
+                        doBitClr(flags, BITOPT_SORT_DESC);
+                        doBitSet(flags, BITOPT_SORT_ASC);
+                        break;
+                    case L'S':
+                        doBitClr(flags, BITOPT_SORT_ASC);
+                        doBitSet(flags, BITOPT_SORT_DESC);
+                        break;
+                    case L'p':
+                        doBitSet(flags, BITOPT_PEDANTIC);
+                        break;
+                    default:
+                        fwprintf(
+                            stderr,
+                            L"unknown option %lc in %ls (arg #%d), for filenames starting with - use -- to end options first\n",
+                            c, argv[i], i
+                        );
+                        return 0;
+                } /* switch c */
+            } /* for j */
 
             ff = i + 1;
             if(ff == argc)
