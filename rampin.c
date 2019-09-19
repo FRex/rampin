@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <wchar.h>
 #include <assert.h>
@@ -25,6 +26,7 @@ struct MappedFile
     s64 size;
     HANDLE file;
     HANDLE mapping;
+    const wchar_t * name;
 };
 
 static void memorymapfile(const wchar_t * fname, struct MappedFile * file)
@@ -61,6 +63,7 @@ static void memorymapfile(const wchar_t * fname, struct MappedFile * file)
     file->ptr = (const unsigned char*)ptr;
     file->file = f;
     file->mapping = m;
+    file->name = fname;
     file->size = li.QuadPart;
 }
 
@@ -77,6 +80,7 @@ static void unmapfile(struct MappedFile * file)
     file->size = 0;
     file->file = NULL;
     file->mapping = NULL;
+    file->name = NULL;
 }
 
 static void unmapall(struct MappedFile * files, int count)
@@ -104,13 +108,13 @@ static void touchbytesonce(const struct MappedFile * file)
         ret += file->ptr[i];
 }
 
-static void touchfirsttime(const struct MappedFile * file, const wchar_t * fname, int printinfo)
+static void touchfirsttime(const struct MappedFile * file, int printinfo)
 {
     double starttime, elapsedtime;
 
     if(printinfo)
         wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
-            fname, file->size, file->size / (1024.0 * 1024.0), file->ptr);
+            file->name, file->size, file->size / (1024.0 * 1024.0), file->ptr);
 
     starttime = mytime();
     touchbytesonce(file);
@@ -118,7 +122,7 @@ static void touchfirsttime(const struct MappedFile * file, const wchar_t * fname
 
     if(printinfo)
         wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
-            fname, file->size, file->size / (1024.0 * 1024.0), file->ptr,
+            file->name, file->size, file->size / (1024.0 * 1024.0), file->ptr,
             elapsedtime, file->size / (elapsedtime * 1024.0 * 1024.0)
         );
 }
@@ -135,11 +139,15 @@ static void print_usage(const wchar_t * argv0, FILE * f)
     fwprintf(f, L"    -t #total, after initial touch print total bytes and speed and time\n", fname);
     fwprintf(f, L"    -q #quiet, don't print the mapped and touched info lines to stdout\n", fname);
     fwprintf(f, L"    -T #TOTAL only, like -t and -q together\n", fname);
+    fwprintf(f, L"    -s #sort in  ascending order before initial touch\n", fname);
+    fwprintf(f, L"    -S #SORT in descending order before initial touch\n", fname);
 }
 
 #define BITOPT_HELP 0
 #define BITOPT_TOTAL 1
 #define BITOPT_QUIET 2
+#define BITOPT_SORT_ASC 3
+#define BITOPT_SORT_DESC 4
 
 static void doBitSet(unsigned * flags, int bit)
 {
@@ -207,6 +215,12 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
                     doBitSet(flags, BITOPT_TOTAL);
                     doBitSet(flags, BITOPT_QUIET);
                     break;
+                case L's':
+                    doBitSet(flags, BITOPT_SORT_ASC);
+                    break;
+                case L'S':
+                    doBitSet(flags, BITOPT_SORT_DESC);
+                    break;
                 default:
                     fwprintf(
                         stderr,
@@ -234,6 +248,25 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
     } /* for */
 
     return 1;
+}
+
+static int mycmp64(s64 a, s64 b)
+{
+    return (a > b) - (a < b);
+}
+
+static int smallerfile(const void * a, const void * b)
+{
+    const struct MappedFile * aa = (const struct MappedFile *)a;
+    const struct MappedFile * bb = (const struct MappedFile *)b;
+    return mycmp64(aa->size, bb->size);
+}
+
+static int biggerfile(const void * a, const void * b)
+{
+    const struct MappedFile * aa = (const struct MappedFile *)a;
+    const struct MappedFile * bb = (const struct MappedFile *)b;
+    return -mycmp64(aa->size, bb->size);
 }
 
 int wmain(int argc, wchar_t ** argv)
@@ -292,9 +325,16 @@ int wmain(int argc, wchar_t ** argv)
         return 3;
     }
 
-    for(i = firstfile; i < argc; ++i)
+    /* 0 sized elements just end up at end/start and don't affect anything due to if ptr checks */
+    if(isBitSet(flags, BITOPT_SORT_ASC))
+        qsort(files, argc, sizeof(struct MappedFile), &smallerfile);
+
+    if(isBitSet(flags, BITOPT_SORT_DESC))
+        qsort(files, argc, sizeof(struct MappedFile), &biggerfile);
+
+    for(i = 0; i < argc; ++i)
         if(files[i].ptr)
-            touchfirsttime(&files[i], argv[i], !isBitSet(flags, BITOPT_QUIET));
+            touchfirsttime(&files[i], !isBitSet(flags, BITOPT_QUIET));
 
     if(isBitSet(flags, BITOPT_TOTAL))
     {
@@ -323,7 +363,7 @@ int wmain(int argc, wchar_t ** argv)
             --loops;
 
         Sleep(30 * 1000);
-        for(i = 1; i < argc; ++i)
+        for(i = 0; i < argc; ++i)
             if(files[i].ptr)
                 touchbytesonce(&files[i]);
     }
