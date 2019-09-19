@@ -104,21 +104,23 @@ static void touchbytesonce(const struct MappedFile * file)
         ret += file->ptr[i];
 }
 
-static void touchfirsttime(const struct MappedFile * file, const wchar_t * fname)
+static void touchfirsttime(const struct MappedFile * file, const wchar_t * fname, int printinfo)
 {
     double starttime, elapsedtime;
 
-    wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
-        fname, file->size, file->size / (1024.0 * 1024.0), file->ptr);
+    if(printinfo)
+        wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
+            fname, file->size, file->size / (1024.0 * 1024.0), file->ptr);
 
     starttime = mytime();
     touchbytesonce(file);
     elapsedtime = mytime() - starttime;
 
-    wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
-        fname, file->size, file->size / (1024.0 * 1024.0), file->ptr,
-        elapsedtime, file->size / (elapsedtime * 1024.0 * 1024.0)
-    );
+    if(printinfo)
+        wprintf(L"%ls: touched, %lld bytes, %.3f MiB, 0x%p, %.3fs, %.3f MiB/s\n",
+            fname, file->size, file->size / (1024.0 * 1024.0), file->ptr,
+            elapsedtime, file->size / (elapsedtime * 1024.0 * 1024.0)
+        );
 }
 
 static void print_usage(const wchar_t * argv0, FILE * f)
@@ -130,9 +132,14 @@ static void print_usage(const wchar_t * argv0, FILE * f)
     fwprintf(f, L"Options:\n", fname);
     fwprintf(f, L"    -h #print this help to stdout (bad invocation print this help to stderr)\n");
     fwprintf(f, L"    -0, -1, ..., -9 #loop 0-9 times after initial mapping and touch, then quit\n", fname);
+    fwprintf(f, L"    -t #total, after initial touch print total bytes and speed and time\n", fname);
+    fwprintf(f, L"    -q #quiet, don't print the mapped and touched info lines to stdout\n", fname);
+    fwprintf(f, L"    -T #TOTAL only, like -t and -q together\n", fname);
 }
 
 #define BITOPT_HELP 0
+#define BITOPT_TOTAL 1
+#define BITOPT_QUIET 2
 
 static void doBitSet(unsigned * flags, int bit)
 {
@@ -186,11 +193,20 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
                 case L'0': case L'1': case L'2': case L'3': case L'4':
                 case L'5': case L'6': case L'7': case L'8': case L'9':
                     *loops = argv[i][1] - L'0';
-                    wprintf(L"loops is %d\n", *loops);
                     break;
                 case L'h':
                     fwprintf(stderr, L"wrong use of -h (arg #%d), use '%ls -h' to print help to stdout\n", i, argv[0]);
                     return 0;
+                case L't':
+                    doBitSet(flags, BITOPT_TOTAL);
+                    break;
+                case L'q':
+                    doBitSet(flags, BITOPT_QUIET);
+                    break;
+                case L'T':
+                    doBitSet(flags, BITOPT_TOTAL);
+                    doBitSet(flags, BITOPT_QUIET);
+                    break;
                 default:
                     fwprintf(
                         stderr,
@@ -228,6 +244,7 @@ int wmain(int argc, wchar_t ** argv)
     int firstfile;
     int goodcount;
     int loops;
+    double totalstarttime;
 
     if(argc < 2)
     {
@@ -257,6 +274,7 @@ int wmain(int argc, wchar_t ** argv)
     }
 
     goodcount = 0;
+    totalstarttime = mytime();
     for(i = firstfile; i < argc; ++i)
     {
         memorymapfile(argv[i], &files[i]);
@@ -276,7 +294,25 @@ int wmain(int argc, wchar_t ** argv)
 
     for(i = firstfile; i < argc; ++i)
         if(files[i].ptr)
-            touchfirsttime(&files[i], argv[i]);
+            touchfirsttime(&files[i], argv[i], !isBitSet(flags, BITOPT_QUIET));
+
+    if(isBitSet(flags, BITOPT_TOTAL))
+    {
+        double totalelapsedtime;
+        s64 totalbytes;
+
+        totalelapsedtime = mytime() - totalstarttime;
+        totalbytes = 0;
+        for(i = 0; i < argc; ++i)
+            if(files[i].ptr)
+                totalbytes += files[i].size;
+
+        wprintf(
+            L"touched %d files, %lld bytes, %.3f MiB, %.3fs, %.3f MiB/s\n",
+            goodcount, totalbytes, totalbytes / (1024.0 * 1024.0),
+            totalelapsedtime, totalbytes / (totalelapsedtime * 1024.0 * 1024.0)
+        );
+    }
 
     while(1)
     {

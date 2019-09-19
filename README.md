@@ -8,7 +8,7 @@ and then sleeps for 30 seconds and accesses them again to keep them in memory.
 
 **By default it never quits so you'll have to somehow kill it once you are done.**
 
-A sole `-h` will print help to stdout. Options `-0`, `-1`, etc. up to `-9` will
+A sole `-h` will print full help to stdout. Options `-0`, `-1`, etc. up to `-9` will
 make it quit after that many sleep + touch loops, not counting the initial one
 so `-0` will map the file, touch all pages once, and quit right after, `-1`
 will map, touch once, and sleep once and touch again and then quit, etc.
