@@ -19,7 +19,15 @@ static const wchar_t * filepath_to_filename(const wchar_t * path)
     return path + lastslash;
 }
 
-static void * memorymapfile(const wchar_t * fname, s64 * fsize)
+struct MappedFile
+{
+    const unsigned char * ptr;
+    s64 size;
+    HANDLE file;
+    HANDLE mapping;
+};
+
+static void memorymapfile(const wchar_t * fname, struct MappedFile * file)
 {
     HANDLE f, m;
     void * ptr = NULL;
@@ -27,18 +35,56 @@ static void * memorymapfile(const wchar_t * fname, s64 * fsize)
 
     f = CreateFileW(fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if(f == INVALID_HANDLE_VALUE)
-        return NULL;
+        return;
 
     if(GetFileSizeEx(f, &li) == 0)
-        return NULL;
+    {
+        CloseHandle(f);
+        return;
+    }
 
     m = CreateFileMappingW(f, NULL, PAGE_READONLY, 0, 0, NULL);
     if(m == NULL)
-        return NULL;
+    {
+        CloseHandle(f);
+        return;
+    }
 
     ptr = MapViewOfFile(m, FILE_MAP_READ, 0, 0, 0);
-    *fsize = li.QuadPart;
-    return ptr;
+    if(!ptr)
+    {
+        CloseHandle(f);
+        CloseHandle(m);
+        return;
+    }
+
+    file->ptr = (const unsigned char*)ptr;
+    file->file = f;
+    file->mapping = m;
+    file->size = li.QuadPart;
+}
+
+static void unmapfile(struct MappedFile * file)
+{
+    if(file->ptr)
+    {
+        UnmapViewOfFile(file->ptr);
+        CloseHandle(file->mapping);
+        CloseHandle(file->file);
+    }
+
+    file->ptr = NULL;
+    file->size = 0;
+    file->file = NULL;
+    file->mapping = NULL;
+}
+
+static void unmapall(struct MappedFile * files, int count)
+{
+    int i;
+
+    for(i = 0; i < count; ++i)
+        unmapfile(&files[i]);
 }
 
 static double mytime(void)
@@ -48,12 +94,6 @@ static double mytime(void)
     QueryPerformanceCounter(&ret);
     return ((double)ret.QuadPart) / ((double)freq.QuadPart);
 }
-
-struct MappedFile
-{
-    unsigned char * ptr;
-    s64 size;
-};
 
 static void touchbytesonce(const struct MappedFile * file)
 {
@@ -219,7 +259,7 @@ int wmain(int argc, wchar_t ** argv)
     goodcount = 0;
     for(i = firstfile; i < argc; ++i)
     {
-        files[i].ptr = (unsigned char*)memorymapfile(argv[i], &files[i].size);
+        memorymapfile(argv[i], &files[i]);
         if(!files[i].ptr)
             fwprintf(stderr, L"%ls: failed to map!\n", argv[i]);
         else
@@ -229,6 +269,7 @@ int wmain(int argc, wchar_t ** argv)
     if(goodcount == 0)
     {
         fwprintf(stderr, L"failed to map any of the given %d files, quitting!\n", argc - firstfile);
+        unmapall(files, argc);
         free(files);
         return 3;
     }
@@ -251,6 +292,7 @@ int wmain(int argc, wchar_t ** argv)
                 touchbytesonce(&files[i]);
     }
 
+    unmapall(files, argc);
     free(files);
     return 0;
 }
