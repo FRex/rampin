@@ -141,6 +141,7 @@ static void print_usage(const wchar_t * argv0, FILE * f)
     fwprintf(f, L"    -T #TOTAL only, like -t and -q together\n", fname);
     fwprintf(f, L"    -s #sort in  ascending order before initial touch\n", fname);
     fwprintf(f, L"    -S #SORT in descending order before initial touch\n", fname);
+    fwprintf(f, L"    -p #pedantic, quit if any file fails to open or map\n", fname);
 }
 
 #define BITOPT_HELP 0
@@ -148,6 +149,7 @@ static void print_usage(const wchar_t * argv0, FILE * f)
 #define BITOPT_QUIET 2
 #define BITOPT_SORT_ASC 3
 #define BITOPT_SORT_DESC 4
+#define BITOPT_PEDANTIC 5
 
 static void doBitSet(unsigned * flags, int bit)
 {
@@ -220,6 +222,9 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
                     break;
                 case L'S':
                     doBitSet(flags, BITOPT_SORT_DESC);
+                    break;
+                case L'p':
+                    doBitSet(flags, BITOPT_PEDANTIC);
                     break;
                 default:
                     fwprintf(
@@ -312,9 +317,20 @@ int wmain(int argc, wchar_t ** argv)
     {
         memorymapfile(argv[i], &files[i]);
         if(!files[i].ptr)
+        {
             fwprintf(stderr, L"%ls: failed to map!\n", argv[i]);
+            if(isBitSet(flags, BITOPT_PEDANTIC))
+            {
+                fwprintf(stderr, L"failed to map a file while running with pedantic (-p), quitting!\n");
+                unmapall(files, argc);
+                free(files);
+                return 4;
+            }
+        }
         else
+        {
             ++goodcount;
+        }
     }
 
     if(goodcount == 0)
