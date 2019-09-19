@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <wchar.h>
+#include <assert.h>
 
 typedef long long int s64;
 
@@ -84,13 +85,82 @@ static void print_usage(const wchar_t * argv0, FILE * f)
 {
     const wchar_t * fname = filepath_to_filename(argv0);
     fwprintf(f, L"%ls - memory map a file and touch all pages periodically\n", fname);
-    fwprintf(f, L"Usage: %ls file...\n", fname);
+    fwprintf(f, L"Help:  %ls -h\n", fname);
+    fwprintf(f, L"Usage: %ls [options...] [--] files...\n", fname);
+}
+
+#define BITOPT_HELP 0
+
+static void doBitSet(unsigned * flags, int bit)
+{
+    assert(flags);
+    *flags |= 1 << bit;
+}
+
+static int isBitSet(unsigned flags, int bit)
+{
+    return !!(flags & (1 << bit));
+}
+
+static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * flags)
+{
+    int i;
+
+    assert(flags);
+    assert(firstfile);
+
+    *flags = 0u;
+    *firstfile = 1;
+
+    if(argc == 2 && 0 == wcscmp(argv[1], L"-h"))
+    {
+        doBitSet(flags, BITOPT_HELP);
+        return 1;
+    }
+
+    for(i = 1; i < argc; ++i)
+    {
+        if(0 == wcscmp(argv[i], L"--"))
+        {
+            const int ff = i + 1;
+            if(ff == argc)
+            {
+                fwprintf(stderr, L"no files after -- (arg #%d), files must come after options\n", i);
+                return 0;
+            }
+
+            *firstfile = ff;
+            return 1;
+        } /* if argv[i] is -- */
+
+        if(argv[i][0] == L'-')
+        {
+            switch(argv[i][1])
+            {
+                case L'h':
+                    fwprintf(stderr, L"wrong use of -h (arg #%d), use '%ls -h' to print help to stdout\n", i, argv[0]);
+                    return 0;
+                default:
+                    fwprintf(
+                        stderr,
+                        L"unknown option %ls (arg #%d), for filenames starting with - use -- to end options first\n",
+                        argv[i],
+                        i
+                    );
+                    return 0;
+            } /* switch argv i 1 */
+        } /* if argv i 0 is -*/
+    } /* for */
+
+    return 1;
 }
 
 int wmain(int argc, wchar_t ** argv)
 {
     struct MappedFile * files;
     int i;
+    unsigned flags;
+    int firstfile;
     int goodcount;
 
     if(argc < 2)
@@ -99,6 +169,20 @@ int wmain(int argc, wchar_t ** argv)
         return 1;
     }
 
+    if(!parse_options(argc, argv, &firstfile, &flags))
+    {
+        print_usage(argv[0], stderr);
+        return 1;
+    }
+
+    if(isBitSet(flags, BITOPT_HELP))
+    {
+        /* since it was correctly requested we print help to stdout not stderr */
+        print_usage(argv[0], stdout);
+        return 0;
+    }
+
+    /* just alloc argc elems and not use few first ones to not mess with indices */
     files = (struct MappedFile*)calloc(argc, sizeof(struct MappedFile));
     if(!files)
     {
@@ -107,7 +191,7 @@ int wmain(int argc, wchar_t ** argv)
     }
 
     goodcount = 0;
-    for(i = 1; i < argc; ++i)
+    for(i = firstfile; i < argc; ++i)
     {
         files[i].ptr = (unsigned char*)memorymapfile(argv[i], &files[i].size);
         if(!files[i].ptr)
@@ -118,12 +202,12 @@ int wmain(int argc, wchar_t ** argv)
 
     if(goodcount == 0)
     {
-        fwprintf(stderr, L"failed to map any of the given %d files, quitting!\n", argc - 1);
+        fwprintf(stderr, L"failed to map any of the given %d files, quitting!\n", argc - firstfile);
         free(files);
         return 3;
     }
 
-    for(i = 1; i < argc; ++i)
+    for(i = firstfile; i < argc; ++i)
         if(files[i].ptr)
             touchfirsttime(&files[i], argv[i]);
 
