@@ -85,8 +85,10 @@ static void print_usage(const wchar_t * argv0, FILE * f)
 {
     const wchar_t * fname = filepath_to_filename(argv0);
     fwprintf(f, L"%ls - memory map a file and touch all pages periodically\n", fname);
-    fwprintf(f, L"Help:  %ls -h\n", fname);
+    fwprintf(f, L"Help:  %ls -h #this prints this message to stdout, bad invocation prints to stderr\n", fname);
     fwprintf(f, L"Usage: %ls [options...] [--] files...\n", fname);
+    fwprintf(f, L"Options:\n", fname);
+    fwprintf(f, L"    -0, -1, ..., -9 #loop 0-9 times after initial mapping and first touch and then quit\n", fname);
 }
 
 #define BITOPT_HELP 0
@@ -102,7 +104,7 @@ static int isBitSet(unsigned flags, int bit)
     return !!(flags & (1 << bit));
 }
 
-static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * flags)
+static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * flags, int * loops)
 {
     int i;
 
@@ -111,6 +113,7 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
 
     *flags = 0u;
     *firstfile = 1;
+    *loops = -1;
 
     if(argc == 2 && 0 == wcscmp(argv[1], L"-h"))
     {
@@ -120,9 +123,11 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
 
     for(i = 1; i < argc; ++i)
     {
+        int ff;
+
         if(0 == wcscmp(argv[i], L"--"))
         {
-            const int ff = i + 1;
+            ff = i + 1;
             if(ff == argc)
             {
                 fwprintf(stderr, L"no files after -- (arg #%d), files must come after options\n", i);
@@ -137,6 +142,11 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
         {
             switch(argv[i][1])
             {
+                case L'0': case L'1': case L'2': case L'3': case L'4':
+                case L'5': case L'6': case L'7': case L'8': case L'9':
+                    *loops = argv[i][1] - L'0';
+                    wprintf(L"loops is %d\n", *loops);
+                    break;
                 case L'h':
                     fwprintf(stderr, L"wrong use of -h (arg #%d), use '%ls -h' to print help to stdout\n", i, argv[0]);
                     return 0;
@@ -149,7 +159,21 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
                     );
                     return 0;
             } /* switch argv i 1 */
-        } /* if argv i 0 is -*/
+
+            ff = i + 1;
+            if(ff == argc)
+            {
+                fwprintf(stderr, L"no files after last option, use -- to end options to pass filenames starting with -\n");
+                return 0;
+            }
+
+            *firstfile = ff;
+        }
+        else
+        {
+            *firstfile = i;
+            return 1;
+        }
     } /* for */
 
     return 1;
@@ -162,6 +186,7 @@ int wmain(int argc, wchar_t ** argv)
     unsigned flags;
     int firstfile;
     int goodcount;
+    int loops;
 
     if(argc < 2)
     {
@@ -169,7 +194,7 @@ int wmain(int argc, wchar_t ** argv)
         return 1;
     }
 
-    if(!parse_options(argc, argv, &firstfile, &flags))
+    if(!parse_options(argc, argv, &firstfile, &flags, &loops))
     {
         print_usage(argv[0], stderr);
         return 1;
@@ -213,6 +238,12 @@ int wmain(int argc, wchar_t ** argv)
 
     while(1)
     {
+        if(loops == 0)
+            break;
+
+        if(loops > 0)
+            --loops;
+
         Sleep(30 * 1000);
         for(i = 1; i < argc; ++i)
             if(files[i].ptr)
