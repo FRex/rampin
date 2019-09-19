@@ -134,7 +134,7 @@ static void print_usage(const wchar_t * argv0, FILE * f)
     fwprintf(f, L"Help:  %ls -h #only valid way to use -h\n", fname);
     fwprintf(f, L"Usage: %ls [options...] [--] files...\n", fname);
     fwprintf(f, L"Options:\n", fname);
-    fwprintf(f, L"    -h #print this help to stdout (bad invocation print this help to stderr)\n");
+    fwprintf(f, L"    -h #print this help to stdout (bad invocation prints it to stderr)\n");
     fwprintf(f, L"    -0, -1, ..., -9 #loop 0-9 times after initial mapping and touch, then quit\n", fname);
     fwprintf(f, L"    -t #total, after initial touch print total bytes and speed and time\n", fname);
     fwprintf(f, L"    -q #quiet, don't print the mapped and touched info lines to stdout\n", fname);
