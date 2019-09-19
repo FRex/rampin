@@ -6,7 +6,12 @@ Takes one or more filenames as arguments, opens them as read only and memory
 maps them whole, then accesses each 4 KiB page of it to bring them into memory
 and then sleeps for 30 seconds and accesses them again to keep them in memory.
 
-**It never quits so you'll have to somehow kill it once you are done.**
+**By default it never quits so you'll have to somehow kill it once you are done.**
+
+A sole `-h` will print help to stdout. Options `-0`, `-1`, etc. up to `-9` will
+make it quit after that many sleep + touch loops, not counting the initial one
+so `-0` will map the file, touch all pages once, and quit right after, `-1`
+will map, touch once, and sleep once and touch again and then quit, etc.
 
 This program only makes sense if you have RAM to spare and/or are on 64-bit. I
 wrote it to speed up level loading in an old game that has a total of 5 GiB of

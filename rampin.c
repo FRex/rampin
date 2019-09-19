@@ -85,10 +85,11 @@ static void print_usage(const wchar_t * argv0, FILE * f)
 {
     const wchar_t * fname = filepath_to_filename(argv0);
     fwprintf(f, L"%ls - memory map a file and touch all pages periodically\n", fname);
-    fwprintf(f, L"Help:  %ls -h #this prints this message to stdout, bad invocation prints to stderr\n", fname);
+    fwprintf(f, L"Help:  %ls -h #only valid way to use -h\n", fname);
     fwprintf(f, L"Usage: %ls [options...] [--] files...\n", fname);
     fwprintf(f, L"Options:\n", fname);
-    fwprintf(f, L"    -0, -1, ..., -9 #loop 0-9 times after initial mapping and first touch and then quit\n", fname);
+    fwprintf(f, L"    -h #print this help to stdout (bad invocation print this help to stderr)\n");
+    fwprintf(f, L"    -0, -1, ..., -9 #loop 0-9 times after initial mapping and touch, then quit\n", fname);
 }
 
 #define BITOPT_HELP 0
