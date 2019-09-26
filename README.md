@@ -19,7 +19,9 @@ assets and a 32-bit exe, so the game, OS and all the assets fit into my PC's RAM
 
 **This program might easily backfire if used too greedily and your OS might start paging to disk!**
 
-To make it easier to rampin entire dir tree I use this help script named `rampintree`:
+To make it easier to rampin entire dir tree I use this help script named `rampintree`,
+but mapping and touching many files one after another has been added recently to the
+`rampin` program itself so just `rampin *` or `rampin` + list of files works too.
 ```
 #!/bin/bash
 

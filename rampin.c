@@ -108,6 +108,12 @@ static void touchbytesonce(const struct MappedFile * file)
         ret += file->ptr[i];
 }
 
+static void print_file_info(const struct MappedFile * file)
+{
+    wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p\n",
+        file->name, file->size, file->size / (1024.0 * 1024.0), file->ptr);
+}
+
 static void touchfirsttime(const struct MappedFile * file, int printinfo)
 {
     double starttime, elapsedtime;
@@ -142,6 +148,7 @@ static void print_usage(const wchar_t * argv0, FILE * f)
     fwprintf(f, L"    -s #sort in  ascending order before initial touch\n", fname);
     fwprintf(f, L"    -S #SORT in descending order before initial touch\n", fname);
     fwprintf(f, L"    -p #pedantic, quit if any file fails to open or map\n", fname);
+    fwprintf(f, L"    -m #map only, try map all given files with no touch or sleep\n", fname);
 }
 
 #define BITOPT_HELP 0
@@ -150,6 +157,7 @@ static void print_usage(const wchar_t * argv0, FILE * f)
 #define BITOPT_SORT_ASC 3
 #define BITOPT_SORT_DESC 4
 #define BITOPT_PEDANTIC 5
+#define BITOPT_MAPONLY 6
 
 static void doBitSet(unsigned * flags, int bit)
 {
@@ -237,6 +245,9 @@ static int parse_options(int argc, wchar_t ** argv, int * firstfile, unsigned * 
                         break;
                     case L'p':
                         doBitSet(flags, BITOPT_PEDANTIC);
+                        break;
+                    case L'm':
+                        doBitSet(flags, BITOPT_MAPONLY);
                         break;
                     default:
                         fwprintf(
@@ -361,8 +372,15 @@ int wmain(int argc, wchar_t ** argv)
         qsort(files, argc, sizeof(struct MappedFile), &biggerfile);
 
     for(i = 0; i < argc; ++i)
-        if(files[i].ptr)
+    {
+        if(!files[i].ptr)
+            continue;
+
+        if(isBitSet(flags, BITOPT_MAPONLY))
+            print_file_info(&files[i]);
+        else
             touchfirsttime(&files[i], !isBitSet(flags, BITOPT_QUIET));
+    }
 
     if(isBitSet(flags, BITOPT_TOTAL))
     {
@@ -375,12 +393,24 @@ int wmain(int argc, wchar_t ** argv)
             if(files[i].ptr)
                 totalbytes += files[i].size;
 
-        wprintf(
-            L"touched %d files, %lld bytes, %.3f MiB, %.3fs, %.3f MiB/s\n",
-            goodcount, totalbytes, totalbytes / (1024.0 * 1024.0),
-            totalelapsedtime, totalbytes / (totalelapsedtime * 1024.0 * 1024.0)
-        );
+        if(isBitSet(flags, BITOPT_MAPONLY))
+        {
+            wprintf(L"mapped %d files, %lld bytes, %.3f MiB, %.3fs\n",
+                goodcount, totalbytes, totalbytes / (1024.0 * 1024.0), totalelapsedtime);
+        }
+        else
+        {
+            wprintf(
+                L"touched %d files, %lld bytes, %.3f MiB, %.3fs, %.3f MiB/s\n",
+                goodcount, totalbytes, totalbytes / (1024.0 * 1024.0),
+                totalelapsedtime, totalbytes / (totalelapsedtime * 1024.0 * 1024.0)
+            );
+        }
     }
+
+    /* to instantly quit the below while 1 loop and never touch bytes */
+    if(isBitSet(flags, BITOPT_MAPONLY))
+        loops = 0;
 
     while(1)
     {
