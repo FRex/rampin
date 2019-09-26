@@ -376,9 +376,10 @@ int wmain(int argc, wchar_t ** argv)
         if(!files[i].ptr)
             continue;
 
-        if(isBitSet(flags, BITOPT_MAPONLY))
+        if(isBitSet(flags, BITOPT_MAPONLY) && !isBitSet(flags, BITOPT_QUIET))
             print_file_info(&files[i]);
-        else
+
+        if(!isBitSet(flags, BITOPT_MAPONLY))
             touchfirsttime(&files[i], !isBitSet(flags, BITOPT_QUIET));
     }
 
