@@ -139,16 +139,16 @@ static void print_usage(const wchar_t * argv0, FILE * f)
     fwprintf(f, L"%ls - memory map a file and touch all pages periodically\n", fname);
     fwprintf(f, L"Help:  %ls -h #only valid way to use -h\n", fname);
     fwprintf(f, L"Usage: %ls [options...] [--] files...\n", fname);
-    fwprintf(f, L"Options:\n", fname);
+    fwprintf(f, L"Options:\n");
     fwprintf(f, L"    -h #print this help to stdout (bad invocation prints it to stderr)\n");
-    fwprintf(f, L"    -0, -1, ..., -9 #loop 0-9 times after initial mapping and touch, then quit\n", fname);
-    fwprintf(f, L"    -t #total, after initial touch print total bytes and speed and time\n", fname);
-    fwprintf(f, L"    -q #quiet, don't print the mapped and touched info lines to stdout\n", fname);
-    fwprintf(f, L"    -T #TOTAL only, like -t and -q together\n", fname);
-    fwprintf(f, L"    -s #sort in  ascending order before initial touch\n", fname);
-    fwprintf(f, L"    -S #SORT in descending order before initial touch\n", fname);
-    fwprintf(f, L"    -p #pedantic, quit if any file fails to open or map\n", fname);
-    fwprintf(f, L"    -m #map only, try map all given files with no touch or sleep\n", fname);
+    fwprintf(f, L"    -0, -1, ..., -9 #loop 0-9 times after initial mapping and touch, then quit\n");
+    fwprintf(f, L"    -t #total, after initial touch print total bytes and speed and time\n");
+    fwprintf(f, L"    -q #quiet, don't print the mapped and touched info lines to stdout\n");
+    fwprintf(f, L"    -T #TOTAL only, like -t and -q together\n");
+    fwprintf(f, L"    -s #sort in  ascending order before initial touch\n");
+    fwprintf(f, L"    -S #SORT in descending order before initial touch\n");
+    fwprintf(f, L"    -p #pedantic, quit if any file fails to open or map\n");
+    fwprintf(f, L"    -m #map only, try map all given files with no touch or sleep\n");
 }
 
 #define BITOPT_HELP 0
