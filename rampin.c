@@ -27,6 +27,9 @@ struct MappedFile
     HANDLE file;
     HANDLE mapping;
     const wchar_t * name;
+
+    /* instead of volatile, += touch returns into this var to prevent optimization */
+    unsigned optimizationpreventer;
 };
 
 static void memorymapfile(const wchar_t * fname, struct MappedFile * file)
@@ -99,13 +102,15 @@ static double mytime(void)
     return ((double)ret.QuadPart) / ((double)freq.QuadPart);
 }
 
-static void touchbytesonce(const struct MappedFile * file)
+static unsigned touchbytesonce(const struct MappedFile * file)
 {
     unsigned ret = 0u;
     s64 i;
 
     for(i = 0; i < file->size; i += 0x1000)
         ret += file->ptr[i];
+
+    return ret;
 }
 
 static void print_file_info(const struct MappedFile * file)
@@ -114,16 +119,17 @@ static void print_file_info(const struct MappedFile * file)
         file->name, file->size, file->size / (1024.0 * 1024.0), file->ptr);
 }
 
-static void touchfirsttime(const struct MappedFile * file, int printinfo)
+static unsigned touchfirsttime(const struct MappedFile * file, int printinfo)
 {
     double starttime, elapsedtime;
+    unsigned ret;
 
     if(printinfo)
         wprintf(L"%ls: mapped,  %lld bytes, %.3f MiB, 0x%p, touching all pages...\n",
             file->name, file->size, file->size / (1024.0 * 1024.0), file->ptr);
 
     starttime = mytime();
-    touchbytesonce(file);
+    ret = touchbytesonce(file);
     elapsedtime = mytime() - starttime;
 
     if(printinfo)
@@ -131,6 +137,8 @@ static void touchfirsttime(const struct MappedFile * file, int printinfo)
             file->name, file->size, file->size / (1024.0 * 1024.0), file->ptr,
             elapsedtime, file->size / (elapsedtime * 1024.0 * 1024.0)
         );
+
+    return ret;
 }
 
 static void print_usage(const wchar_t * argv0, FILE * f)
@@ -380,7 +388,7 @@ int wmain(int argc, wchar_t ** argv)
             print_file_info(&files[i]);
 
         if(!isBitSet(flags, BITOPT_MAPONLY))
-            touchfirsttime(&files[i], !isBitSet(flags, BITOPT_QUIET));
+            files[i].optimizationpreventer += touchfirsttime(&files[i], !isBitSet(flags, BITOPT_QUIET));
     }
 
     if(isBitSet(flags, BITOPT_TOTAL))
@@ -424,7 +432,7 @@ int wmain(int argc, wchar_t ** argv)
         Sleep(30 * 1000);
         for(i = 0; i < argc; ++i)
             if(files[i].ptr)
-                touchbytesonce(&files[i]);
+                files[i].optimizationpreventer += touchbytesonce(&files[i]);
     }
 
     unmapall(files, argc);
