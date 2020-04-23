@@ -1,6 +1,7 @@
 # rampin
 
-A small C program to try keep a file or few in Windows RAM cache.
+A small C program to try keep a file or few in Windows RAM cache. For a Unix
+(not only Linux) alternative see [vmtouch](https://linux.die.net/man/8/vmtouch).
 
 Takes one or more filenames as arguments, opens them as read only and memory
 maps them whole, then accesses each 4 KiB page of it to bring them into memory
