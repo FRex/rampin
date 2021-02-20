@@ -23,12 +23,27 @@ assets and a 32-bit exe, so the game, OS and all the assets fit into my PC's RAM
 To make it easier to rampin entire dir tree I use this help script named `rampintree`,
 but mapping and touching many files one after another has been added recently to the
 `rampin` program itself so just `rampin *` or `rampin` + list of files works too.
+You can write a similar script in Powershell, Batch, pure sh and Busybox, etc.
+
+In the future `rampin` will likely offer an option to recurse directories on its
+own (if you need that option now you can open an issue here to let me know).
+
 ```
 #!/bin/bash
 
 if [ "$#" -eq 1 ]
 then
     find "$1" -type f | xargs -P 99000 -I @ rampin @
+fi
+```
+
+The above might work poorly and cause lower reading speeds on an HDD. For an
+HDD a script that reads files one by one (and uses only one process) could be:
+```
+#!/bin/bash
+if [ "$#" -eq 1 ]
+then
+    rampin `find "$1" -type f`
 fi
 ```
 
